@@ -7,6 +7,9 @@ var debug = require('debug')('koa-mount');
 var compose = require('koa-compose');
 var assert = require('assert');
 
+var pathToRegexp = require('path-to-regexp');
+var route = require('path-match')({ end: false });
+
 /**
  * Expose `mount()`.
  */
@@ -45,20 +48,27 @@ function mount(prefix, app) {
   var name = app.name || 'unnamed';
   debug('mount %s %s', prefix, name);
 
+  // Create regexp matchers
+  var matcher = route(prefix);
+  var re = pathToRegexp(prefix, [], {
+    end: false
+  });
+
   return function *(upstream){
     var prev = this.path;
-    var newPath = match(prev);
-    debug('mount %s %s -> %s', prefix, name, newPath);
-    if (!newPath) return yield* upstream;
+    var res = match(this);
+    if (!res) return yield* upstream;
+    debug('mount %s %s -> %s', prefix, name, res.path);
 
     this.mountPath = prefix;
-    this.path = newPath;
+    this.params = res.params;
+    this.path = res.path;
     debug('enter %s -> %s', prev, this.path);
 
     yield* downstream.call(this, function *(){
       this.path = prev;
       yield* upstream;
-      this.path = newPath;
+      this.path = res.path;
     }.call(this));
 
     debug('leave %s -> %s', prev, this.path);
@@ -80,15 +90,31 @@ function mount(prefix, app) {
    * @api private
    */
 
-  function match(path) {
-    // does not match prefix at all
-    if (0 != path.indexOf(prefix)) return false;
+  function match (ctx) {
+    var path = ctx.path;
+    var params = matcher(path, ctx.params);
 
-    var newPath = path.replace(prefix, '') || '/';
-    if (trailingSlash) return newPath;
+    // does not match prefix at all
+    if (params === false) {
+      return false;
+    }
+
+    var newPath = path.replace(re, '') || '/';
+    if (trailingSlash) {
+      return {
+        path: newPath,
+        params: params
+      };
+    }
 
     // `/mount` does not match `/mountlkjalskjdf`
-    if ('/' != newPath[0]) return false;
-    return newPath;
+    if ('/' != newPath[0]) {
+      return false;
+    }
+
+    return {
+      path: newPath,
+      params: params
+    };
   }
 }

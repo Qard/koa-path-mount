@@ -1,7 +1,7 @@
 {
-  "name": "koa-mount",
+  "name": "koa-path-mount",
   "description": "Mounting middleware for koa",
-  "repository": "koajs/mount",
+  "repository": "qard/koa-path-mount",
   "version": "1.3.0",
   "keywords": [
     "koa",
@@ -20,8 +20,10 @@
   },
   "license": "MIT",
   "dependencies": {
+    "debug": "*",
     "koa-compose": "^2.2.0",
-    "debug": "*"
+    "path-match": "^1.1.1",
+    "path-to-regexp": "^0.2.2"
   },
   "scripts": {
     "test": "make test"
